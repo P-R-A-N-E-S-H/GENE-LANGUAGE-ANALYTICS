@@ -1,5 +1,5 @@
 """
-Genomic linguistic analytics: k-mer tokenization, information entropy, Markov transitions, and vectorization.
+Genomic linguistic analytics: k-mer tokenization, information entropy, Markov transitions, BPE subwords, and vectorization.
 """
 
 from .kmer import KmerExtractor, compute_kmer_spectrum
@@ -11,6 +11,7 @@ from .entropy import (
 )
 from .markov import MarkovModelDNA
 from .vectorizer import GenomicVectorizer
+from .subword import GenomicBpeTokenizer
 
 __all__ = [
     "KmerExtractor",
@@ -21,4 +22,5 @@ __all__ = [
     "zipf_power_law_fit",
     "MarkovModelDNA",
     "GenomicVectorizer",
+    "GenomicBpeTokenizer",
 ]
