@@ -11,6 +11,12 @@ from .codons import (
     calculate_rscu,
     CodonUsageProfile,
 )
+from .isochore import (
+    classify_isochore_family,
+    segment_isochores,
+    compute_gc3_profile,
+    IsochoreSegment,
+)
 
 __all__ = [
     "GenomicSequence",
@@ -23,4 +29,8 @@ __all__ = [
     "find_orfs",
     "calculate_rscu",
     "CodonUsageProfile",
+    "classify_isochore_family",
+    "segment_isochores",
+    "compute_gc3_profile",
+    "IsochoreSegment",
 ]
