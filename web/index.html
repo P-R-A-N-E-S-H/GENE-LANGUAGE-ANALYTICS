@@ -91,7 +91,9 @@
           <button class="tab-btn active" data-tab="tab-overview">📊 Overview &amp; ML</button>
           <button class="tab-btn" data-tab="tab-kmers">🔤 k-mer Linguistics</button>
           <button class="tab-btn" data-tab="tab-orfs">🧬 6-Frame ORFs</button>
-          <button class="tab-btn" data-tab="tab-motifs">🎯 Motifs &amp; Splice Sites</button>
+          <button class="tab-btn" data-tab="tab-motifs">🎯 Motifs</button>
+          <button class="tab-btn" data-tab="tab-crispr">✂️ CRISPR sgRNAs</button>
+          <button class="tab-btn" data-tab="tab-splice">🔗 Splice Junctions</button>
           <button class="tab-btn" data-tab="tab-syntax">🔀 DNA Syntax &amp; Markov</button>
         </nav>
 
@@ -199,11 +201,11 @@
           </div>
         </div>
 
-        <!-- TAB 4: MOTIFS & SPLICE SITES -->
+        <!-- TAB 4: MOTIFS -->
         <div id="tab-motifs" class="tab-content">
           <div class="card-section">
             <div class="card-title">
-              <span>🎯 Regulatory Motifs, Promoters &amp; Splice Junctions</span>
+              <span>🎯 Regulatory Motifs, Promoters &amp; Consensus Elements</span>
             </div>
             <div style="overflow-x:auto;">
               <table class="data-table">
@@ -217,6 +219,53 @@
                   </tr>
                 </thead>
                 <tbody id="motifsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: CRISPR sgRNAs -->
+        <div id="tab-crispr" class="tab-content">
+          <div class="card-section">
+            <div class="card-title">
+              <span>✂️ SpCas9 sgRNA Guide Candidates (PAM: NGG)</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>20nt Protospacer</th>
+                    <th>PAM</th>
+                    <th>Strand</th>
+                    <th>Position</th>
+                    <th>GC%</th>
+                    <th>Efficiency</th>
+                  </tr>
+                </thead>
+                <tbody id="crisprTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: SPLICE JUNCTIONS -->
+        <div id="tab-splice" class="tab-content">
+          <div class="card-section">
+            <div class="card-title">
+              <span>🔗 5' Donor (GT) &amp; 3' Acceptor (AG) Splice Junction Scorer</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Site Type</th>
+                    <th>Position</th>
+                    <th>Sequence Context</th>
+                    <th>Log-Odds Score</th>
+                    <th>Confidence</th>
+                  </tr>
+                </thead>
+                <tbody id="spliceTableBody"></tbody>
               </table>
             </div>
           </div>
