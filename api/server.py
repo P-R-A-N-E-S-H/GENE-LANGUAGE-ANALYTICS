@@ -54,11 +54,11 @@ def get_default_classifier() -> ExonIntronClassifier:
             seqs, labels = [], []
             for r in records:
                 hdr = (r.identifier + " " + r.description).lower()
-                if "exon" in hdr or "coding" in hdr:
-                    labels.append(ExonIntronClassifier.CLASS_EXON)
-                    seqs.append(r.sequence.sequence)
-                elif "intron" in hdr or "non-coding" in hdr or "noncoding" in hdr:
+                if "intron" in hdr or "non-coding" in hdr or "noncoding" in hdr:
                     labels.append(ExonIntronClassifier.CLASS_INTRON)
+                    seqs.append(r.sequence.sequence)
+                elif "exon" in hdr or "coding" in hdr:
+                    labels.append(ExonIntronClassifier.CLASS_EXON)
                     seqs.append(r.sequence.sequence)
             if len(seqs) >= 4:
                 clf.fit(seqs, labels, val_split=0.0)

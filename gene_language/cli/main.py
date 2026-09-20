@@ -220,11 +220,11 @@ def classify(fasta_file: str, model: str):
     for r in records:
         # Detect label in header
         header_lower = (r.identifier + " " + r.description).lower()
-        if "exon" in header_lower or "coding" in header_lower:
-            labels.append(ExonIntronClassifier.CLASS_EXON)
-            seqs.append(r.sequence.sequence)
-        elif "intron" in header_lower or "non-coding" in header_lower or "noncoding" in header_lower:
+        if "intron" in header_lower or "non-coding" in header_lower or "noncoding" in header_lower:
             labels.append(ExonIntronClassifier.CLASS_INTRON)
+            seqs.append(r.sequence.sequence)
+        elif "exon" in header_lower or "coding" in header_lower:
+            labels.append(ExonIntronClassifier.CLASS_EXON)
             seqs.append(r.sequence.sequence)
 
     if len(seqs) < 4:
