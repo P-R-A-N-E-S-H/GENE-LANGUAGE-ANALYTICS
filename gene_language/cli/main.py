@@ -266,6 +266,85 @@ def classify(fasta_file: str, model: str):
         click.echo(f"5-Fold CV: {report.cv_mean * 100:.2f}% +- {report.cv_std * 100:.2f}%")
 
 
+@cli.command("crispr")
+@click.argument("fasta_file", type=click.Path(exists=True))
+@click.option("--top", default=10, help="Number of top candidates to display (default: 10)")
+def crispr(fasta_file: str, top: int):
+    """Discover SpCas9 sgRNA guide RNA candidates with PAM (NGG) and on-target efficiency."""
+    from ..core.crispr import CrisprGuideDesigner
+    records = read_fasta(fasta_file, max_records=1)
+    if not records:
+        return
+
+    designer = CrisprGuideDesigner()
+    guides = designer.find_guides(records[0].sequence.sequence)
+
+    if HAS_RICH:
+        tbl = Table(title="Top CRISPR-Cas9 sgRNA Guide RNA Candidates", header_style="bold green")
+        tbl.add_column("Rank", justify="center")
+        tbl.add_column("Protospacer (20nt)", style="bold cyan")
+        tbl.add_column("PAM", style="bold magenta")
+        tbl.add_column("Strand", justify="center")
+        tbl.add_column("Coordinates", justify="center")
+        tbl.add_column("GC%", justify="right")
+        tbl.add_column("Score", justify="right", style="bold yellow")
+        tbl.add_column("Evaluation", style="dim")
+
+        for rank, g in enumerate(guides[:top], 1):
+            tbl.add_row(
+                str(rank),
+                g.spacer_sequence,
+                g.pam_sequence,
+                g.strand,
+                f"{g.start}:{g.end}",
+                f"{g.gc_content:.1f}%",
+                f"{g.efficiency_score:.1f}",
+                g.recommendation
+            )
+        console.print(tbl)
+        console.print(f"Total guide candidates found: [bold cyan]{len(guides)}[/bold cyan]")
+    else:
+        click.echo(f"Found {len(guides)} guide sites:")
+        for r, g in enumerate(guides[:top], 1):
+            click.echo(f"#{r} [{g.strand}] {g.spacer_sequence} {g.pam_sequence} (Score: {g.efficiency_score})")
+
+
+@cli.command("splice")
+@click.argument("fasta_file", type=click.Path(exists=True))
+def splice(fasta_file: str):
+    """Scan sequence for 5' splice donors (GT) and 3' splice acceptors (AG)."""
+    from ..models.splice_junction import SpliceJunctionScorer
+    records = read_fasta(fasta_file, max_records=1)
+    if not records:
+        return
+
+    scorer = SpliceJunctionScorer()
+    junctions = scorer.scan_all(records[0].sequence.sequence)
+
+    if HAS_RICH:
+        tbl = Table(title="Detected Splice Junctions (PWM Log-Odds Scoring)", header_style="bold yellow")
+        tbl.add_column("Type", style="bold cyan")
+        tbl.add_column("Position", justify="center")
+        tbl.add_column("Context Window", style="bold green")
+        tbl.add_column("Score (bits)", justify="right")
+        tbl.add_column("Confidence", justify="right", style="bold yellow")
+
+        for j in junctions[:20]:
+            tbl.add_row(
+                j.site_type,
+                str(j.position),
+                j.sequence_context,
+                f"{j.score:.2f}",
+                f"{j.confidence * 100:.1f}%"
+            )
+        console.print(tbl)
+        console.print(f"Total splice junctions identified: [bold cyan]{len(junctions)}[/bold cyan]")
+    else:
+        click.echo(f"Found {len(junctions)} junctions:")
+        for j in junctions[:15]:
+            click.echo(f"[{j.site_type}] pos {j.position} ({j.score} bits): {j.sequence_context}")
+
+
 @cli.command("serve")
 @click.option("--host", default="127.0.0.1", help="Host IP address (default: 127.0.0.1)")
 @click.option("--port", default=8000, help="Port number (default: 8000)")
