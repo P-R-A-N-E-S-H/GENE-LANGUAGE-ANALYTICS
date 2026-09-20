@@ -17,6 +17,7 @@ from .isochore import (
     compute_gc3_profile,
     IsochoreSegment,
 )
+from .crispr import CrisprGuideDesigner, SgRNACandidate
 
 __all__ = [
     "GenomicSequence",
@@ -33,4 +34,6 @@ __all__ = [
     "segment_isochores",
     "compute_gc3_profile",
     "IsochoreSegment",
+    "CrisprGuideDesigner",
+    "SgRNACandidate",
 ]
