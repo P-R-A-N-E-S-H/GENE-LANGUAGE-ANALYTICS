@@ -261,6 +261,8 @@ print(f"Prediction: {result['prediction']} ({result['confidence'] * 100:.1f}% co
 |---|---|---|
 | `gene-lang analyze` | Full linguistic & entropy profiling | `gene-lang analyze sequence.fasta --k 3` |
 | `gene-lang classify` | Train and benchmark Exon/Intron model | `gene-lang classify labeled_data.fasta` |
+| `gene-lang crispr` | Scan SpCas9 sgRNA guides with PAM (NGG) | `gene-lang crispr target.fasta --top 10` |
+| `gene-lang splice` | Predict 5' donor (GT) and 3' acceptor (AG) sites | `gene-lang splice sequence.fasta` |
 | `gene-lang orf` | Scan all 6 reading frames for ORFs | `gene-lang orf sequence.fasta --min-len 30` |
 | `gene-lang motifs` | Search for promoters & splice junctions | `gene-lang motifs sequence.fasta` |
 | `gene-lang clean` | Standardize FASTA and strip ambiguities | `gene-lang clean raw.fasta clean.fasta` |
