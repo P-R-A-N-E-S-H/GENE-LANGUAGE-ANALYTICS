@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GENE-LANGUAGE-ANALYTICS 2.0 | Genomic NLP & Machine Learning Studio</title>
+  <meta name="description" content="Decoding the Language of Life: End-to-end framework treating DNA as biological text with k-mer linguistics, information entropy, and Exon/Intron classification.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-wrap">
+        <img src="favicon.svg" alt="DNA Logo" class="logo-icon">
+        <div class="logo-text">
+          <h1>GENE-LANGUAGE-ANALYTICS 2.0</h1>
+          <p>Decoding the Language of Life via Natural Language Processing &amp; Machine Learning</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <div class="badge pulse">ML Core Active</div>
+        <div class="badge">v2.0.0 Production</div>
+        <a href="https://github.com/P-R-A-N-E-S-H/GENE-LANGUAGE-ANALYTICS" target="_blank" class="badge" style="text-decoration:none;">GitHub Repo ↗</a>
+      </div>
+    </header>
+
+    <!-- Quick Presets Bar -->
+    <section class="control-bar">
+      <div class="preset-selector-row">
+        <span style="font-size:0.82rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Presets:</span>
+        <button class="preset-btn active" data-preset="brca1_exon">🧬 Human BRCA1 Exon</button>
+        <button class="preset-btn" data-preset="brca1_intron">🧬 Human BRCA1 Intron</button>
+        <button class="preset-btn" data-preset="beta_globin">🩸 Beta-Globin (HBB) CDS</button>
+        <button class="preset-btn" data-preset="ecoli_promoter">🦠 E. coli Lac Promoter</button>
+      </div>
+    </section>
+
+    <!-- Main Workbench Grid -->
+    <main class="workbench-grid">
+      <!-- Left Panel: Sequence Studio Input -->
+      <aside class="sequence-panel">
+        <div class="panel-header">
+          <h2><span>🔬</span> Sequence Studio</h2>
+          <span class="badge" id="seqBadge">FASTA / Raw</span>
+        </div>
+
+        <textarea id="seqInput" class="seq-textarea" placeholder="Paste FASTA or raw nucleotide sequence (A, C, G, T)...">GATGCGACCGCTTCCCAAGCCAGAGTCGAGCGCCTAAGGCTACGGAGGCTAAGCGCTCAACCCGTTGGCGCCCAGCCATTGCCGCTCGCCCGGGTGAGTGGCGCGAGACCCTGCTCCAGCGCTCGTACACACGGAGCAGAGGATCCGGGGCGTAGGCCGGAGCTCAGCC</textarea>
+
+        <div class="param-grid">
+          <div class="param-group">
+            <label for="kmerSelect">k-mer Length (k):</label>
+            <select id="kmerSelect">
+              <option value="2">k = 2 (Dinucleotides)</option>
+              <option value="3" selected>k = 3 (Codons)</option>
+              <option value="4">k = 4 (Tetranucleotides)</option>
+              <option value="5">k = 5 (Pentamers)</option>
+            </select>
+          </div>
+          <div class="param-group">
+            <label for="minOrfInput">Min ORF (AA):</label>
+            <input type="number" id="minOrfInput" value="20" min="5" max="500">
+          </div>
+        </div>
+
+        <button id="btnAnalyze" class="btn-primary">
+          <span>⚡</span> Analyze Genomic Language
+        </button>
+
+        <div class="btn-group-secondary">
+          <button id="btnRevComp" class="btn-secondary">Reverse Complement</button>
+          <button id="btnClean" class="btn-secondary">Strip Ambiguities (N)</button>
+        </div>
+
+        <button id="btnExportJson" class="btn-secondary" style="width:100%;">
+          <span>📥</span> Export JSON Analysis Report
+        </button>
+      </aside>
+
+      <!-- Right Panel: Analytics Studio Tabs -->
+      <section class="analytics-panel">
+        <!-- Navigation Tabs -->
+        <nav class="tabs-nav">
+          <button class="tab-btn active" data-tab="tab-overview">📊 Overview &amp; ML</button>
+          <button class="tab-btn" data-tab="tab-kmers">🔤 k-mer Linguistics</button>
+          <button class="tab-btn" data-tab="tab-orfs">🧬 6-Frame ORFs</button>
+          <button class="tab-btn" data-tab="tab-motifs">🎯 Motifs &amp; Splice Sites</button>
+          <button class="tab-btn" data-tab="tab-syntax">🔀 DNA Syntax &amp; Markov</button>
+        </nav>
+
+        <!-- Metric Cards -->
+        <div class="metrics-grid">
+          <div class="metric-card" style="--card-accent: var(--accent-cyan);">
+            <div class="metric-label">Sequence Length</div>
+            <div class="metric-val" id="statLength">173 bp</div>
+            <div class="metric-sub">Nucleotide count</div>
+          </div>
+          <div class="metric-card" style="--card-accent: var(--accent-emerald);">
+            <div class="metric-label">GC Content</div>
+            <div class="metric-val" id="statGc">67.05%</div>
+            <div class="metric-sub">Thermal stability index</div>
+          </div>
+          <div class="metric-card" style="--card-accent: var(--accent-purple);">
+            <div class="metric-label">Shannon Entropy H</div>
+            <div class="metric-val" id="statEntropy">1.94 bits</div>
+            <div class="metric-sub">Information capacity</div>
+          </div>
+          <div class="metric-card" style="--card-accent: var(--accent-indigo);">
+            <div class="metric-label">Linguistic Complexity</div>
+            <div class="metric-val" id="statComplexity">0.824105</div>
+            <div class="metric-sub">Trifonov measure</div>
+          </div>
+          <div class="metric-card" style="--card-accent: var(--accent-amber);">
+            <div class="metric-label">CpG Obs/Exp</div>
+            <div class="metric-val" id="statCpg">1.12</div>
+            <div class="metric-sub">Island propensity</div>
+          </div>
+        </div>
+
+        <!-- TAB 1: OVERVIEW & ML -->
+        <div id="tab-overview" class="tab-content active">
+          <!-- AI Exon vs Intron Card -->
+          <div class="ai-hero-card">
+            <div>
+              <div class="ai-pill" id="aiPredBadge">High Coding Potential</div>
+              <div class="ai-pred-title exon" id="aiPredTitle">Coding Region (Exon)</div>
+              <p style="font-size:0.85rem;color:var(--text-muted);margin-top:0.3rem;">
+                Evaluated by XGBoost Genomic NLP model based on multi-scale k-mer vectors and GC composition.
+              </p>
+            </div>
+            <div class="confidence-bar-wrap">
+              <div style="display:flex;justify-content:space-between;font-size:0.8rem;">
+                <span style="color:var(--text-muted);">Confidence Score</span>
+                <span style="font-weight:700;color:var(--accent-cyan);" id="aiConfPct">94.2%</span>
+              </div>
+              <div class="conf-track">
+                <div class="conf-fill" id="aiConfFill" style="width: 94%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sliding Window GC Track -->
+          <div class="card-section">
+            <div class="card-title">
+              <span>📈 Sliding-Window GC Profile (%)</span>
+              <span class="badge">Dynamic Resolution</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="slidingGcCanvas" class="gen-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: K-MER LINGUISTICS -->
+        <div id="tab-kmers" class="tab-content">
+          <div class="workbench-grid" style="grid-template-columns: 1fr 1fr; gap:1.5rem;">
+            <div class="card-section">
+              <div class="card-title">
+                <span>📊 Top k-mer Frequency Spectrum</span>
+              </div>
+              <div class="chart-container">
+                <canvas id="kmerChartCanvas" class="gen-canvas"></canvas>
+              </div>
+            </div>
+
+            <div class="card-section">
+              <div class="card-title">
+                <span>🧪 Nucleotide Composition (A, C, G, T)</span>
+              </div>
+              <div class="chart-container">
+                <canvas id="compDonutCanvas" class="gen-canvas"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: 6-FRAME ORFs -->
+        <div id="tab-orfs" class="tab-content">
+          <div class="card-section">
+            <div class="card-title">
+              <span>🧬 6-Frame Open Reading Frame Visualizer</span>
+              <span class="badge">Strands: +1, +2, +3, -1, -2, -3</span>
+            </div>
+            <div class="orf-track-container" id="orfTrackContainer"></div>
+          </div>
+
+          <div class="card-section">
+            <div class="card-title">
+              <span>📜 Discovered Peptide Chains</span>
+            </div>
+            <div id="orfList"></div>
+          </div>
+        </div>
+
+        <!-- TAB 4: MOTIFS & SPLICE SITES -->
+        <div id="tab-motifs" class="tab-content">
+          <div class="card-section">
+            <div class="card-title">
+              <span>🎯 Regulatory Motifs, Promoters &amp; Splice Junctions</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Motif Name</th>
+                    <th>Category</th>
+                    <th>Coordinates</th>
+                    <th>Matched DNA</th>
+                    <th>Biological Significance</th>
+                  </tr>
+                </thead>
+                <tbody id="motifsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 5: DNA SYNTAX & MARKOV -->
+        <div id="tab-syntax" class="tab-content">
+          <div class="card-section">
+            <div class="card-title">
+              <span>🔀 1st-Order Markov DNA Syntax Transition Matrix</span>
+            </div>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">
+              Transition probability P(Base_t+1 | Base_t) capturing the syntactic grammar and dinucleotide coupling in this sequence.
+            </p>
+            <div class="matrix-grid" id="markovGrid"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p><strong>GENE-LANGUAGE-ANALYTICS 2.0</strong> — Developed with ❤️ by <a href="https://github.com/P-R-A-N-E-S-H" target="_blank">Pranesh M</a> for Bioinformatics &amp; Machine Learning research.</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
