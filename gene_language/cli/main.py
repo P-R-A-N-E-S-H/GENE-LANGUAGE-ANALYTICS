@@ -32,7 +32,7 @@ from ..models.motifs import MotifScanner
 @click.group()
 @click.version_option(version="2.0.0", prog_name="gene-lang")
 def cli():
-    """🧬 GENE-LANGUAGE-ANALYTICS: Decoding the Language of Life using NLP & ML."""
+    """GENE-LANGUAGE-ANALYTICS: Decoding the Language of Life using NLP & ML."""
     pass
 
 
