@@ -151,7 +151,7 @@ class GenomicEmbedding:
         self.k = k
         self.normalize = normalize.lower()
         self.extractor = KmerExtractor(k=k)
-        self.vocab = self.extractor.generate_kmer_vocab()
+        self.vocab = self.extractor.vocabulary
         self.kmer_to_idx = {kmer: i for i, kmer in enumerate(self.vocab)}
 
     @property
@@ -192,7 +192,7 @@ class TfidfGenomicEmbedding:
     def __init__(self, k: int = 3):
         self.k = k
         self.extractor = KmerExtractor(k=k)
-        self.vocab = self.extractor.generate_kmer_vocab()
+        self.vocab = self.extractor.vocabulary
         self.kmer_to_idx = {kmer: i for i, kmer in enumerate(self.vocab)}
         self.idf_ = np.zeros(len(self.vocab), dtype=np.float32)
         self.is_fitted = False
