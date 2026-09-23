@@ -345,6 +345,212 @@ def splice(fasta_file: str):
             click.echo(f"[{j.site_type}] pos {j.position} ({j.score} bits): {j.sequence_context}")
 
 
+@cli.command("repeats")
+@click.argument("fasta_file", type=click.Path(exists=True))
+@click.option("--min-copies", default=3, help="Minimum consecutive repetitions (default: 3)")
+@click.option("--top", default=15, help="Number of repeat tracts to display (default: 15)")
+def repeats(fasta_file: str, min_copies: int, top: int):
+    """Discover microsatellites, tandem repeats, and pathogenic expansion motifs."""
+    from ..core.repeats import TandemRepeatScanner
+    records = read_fasta(fasta_file, max_records=1)
+    if not records:
+        return
+
+    seq = records[0].sequence.sequence
+    scanner = TandemRepeatScanner()
+    all_repeats = scanner.scan(seq, min_copies=min_copies)
+    disease_repeats = scanner.scan_pathogenic_expansions(seq)
+    telomere_info = scanner.telomeric_profile(seq)
+
+    if HAS_RICH:
+        console.print(Panel.fit(
+            f"[bold cyan]🔬 Microsatellite & Short Tandem Repeat (STR) Analysis[/bold cyan]\n"
+            f"Discovered [bold white]{len(all_repeats)}[/bold white] repeat tracts across [bold white]{len(seq):,}[/bold white] bp.",
+            border_style="magenta"
+        ))
+
+        tbl = Table(title=f"Top Tandem Repeats (>= {min_copies} copies)", header_style="bold magenta")
+        tbl.add_column("Unit", style="bold yellow")
+        tbl.add_column("Unit Len", justify="center")
+        tbl.add_column("Copies", justify="right", style="bold green")
+        tbl.add_column("Coordinates", justify="center")
+        tbl.add_column("Total (bp)", justify="right")
+        tbl.add_column("Pathogenic / Disease Association", style="bold red")
+
+        for r in all_repeats[:top]:
+            dis = r.disease_associated or "—"
+            tbl.add_row(
+                r.unit,
+                str(r.unit_length),
+                f"{r.copies:.1f}x",
+                f"{r.start:,} - {r.end:,}",
+                f"{r.total_length:,}",
+                dis
+            )
+        console.print(tbl)
+
+        if disease_repeats:
+            console.print(f"\n[bold red]⚠️  Discovered {len(disease_repeats)} Pathogenic Disease-Associated Repeat Motifs![/bold red]")
+
+        console.print(f"Telomeric Repeat Tracts (TTAGGG/CCCTAA): [bold cyan]{telomere_info['total_telomeric_bp']} bp ({telomere_info['telomeric_percentage']}%) [/bold cyan]")
+    else:
+        click.echo(f"Found {len(all_repeats)} repeats:")
+        for r in all_repeats[:top]:
+            click.echo(f"Unit {r.unit} ({r.copies:.1f}x) at {r.start}-{r.end} [{r.disease_associated or 'Normal'}]")
+
+
+@cli.command("promoters")
+@click.argument("fasta_file", type=click.Path(exists=True))
+@click.option("--min-score", default=0.72, help="Minimum PWM relative score threshold (default: 0.72)")
+def promoters(fasta_file: str, min_score: float):
+    """Scan sequence for core promoter elements (TATA, Inr, DPE, BRE, Sp1) and TSS architectures."""
+    from ..models.promoters import PromoterArchitectureScanner
+    records = read_fasta(fasta_file, max_records=1)
+    if not records:
+        return
+
+    seq = records[0].sequence.sequence
+    scanner = PromoterArchitectureScanner()
+    elements = scanner.scan(seq, min_relative_score=min_score)
+    architectures = scanner.identify_putative_promoter_regions(seq)
+
+    if HAS_RICH:
+        console.print(Panel.fit(
+            f"[bold cyan]🎯 Core Promoter & Regulatory Architecture Scanner[/bold cyan]\n"
+            f"Found [bold white]{len(elements)}[/bold white] promoter elements; predicted [bold white]{len(architectures)}[/bold white] putative TSS loci.",
+            border_style="cyan"
+        ))
+
+        tbl = Table(title="Detected Core Promoter Elements (PWM Scoring)", header_style="bold green")
+        tbl.add_column("Element", style="bold cyan")
+        tbl.add_column("Coordinates", justify="center")
+        tbl.add_column("Sequence", style="bold yellow")
+        tbl.add_column("PWM Score (bits)", justify="right")
+        tbl.add_column("Relative Score", justify="right", style="bold green")
+
+        for el in elements[:20]:
+            tbl.add_row(
+                el.name,
+                f"{el.start:,} - {el.end:,}",
+                el.sequence,
+                f"{el.raw_score:.2f}",
+                f"{el.relative_score * 100:.1f}%"
+            )
+        console.print(tbl)
+
+        if architectures:
+            ptbl = Table(title="Predicted Core Promoter Architectures & Transcription Start Sites", header_style="bold blue")
+            ptbl.add_column("Predicted TSS", justify="center", style="bold yellow")
+            ptbl.add_column("Architecture Type", style="bold green")
+            ptbl.add_column("TATA-box Status", style="dim")
+            ptbl.add_column("Sp1 / CpG Boxes", justify="center")
+
+            for arch in architectures[:10]:
+                tata_str = f"Present ({arch['tata_box']['sequence']})" if arch["tata_box"] else "TATA-less"
+                ptbl.add_row(
+                    f"Position +{arch['predicted_tss']}",
+                    arch["architecture_type"],
+                    tata_str,
+                    str(len(arch["sp1_gc_boxes"]))
+                )
+            console.print(ptbl)
+    else:
+        click.echo(f"Discovered {len(elements)} promoter elements, {len(architectures)} putative TSS sites.")
+
+
+@cli.command("isochores")
+@click.argument("fasta_file", type=click.Path(exists=True))
+@click.option("--window", default=1000, help="Sliding window size in bp (default: 1000)")
+@click.option("--step", default=200, help="Step size in bp (default: 200)")
+def isochores(fasta_file: str, window: int, step: int):
+    """Segment eukaryotic genomic sequences into isochore families (L1, L2, H1, H2, H3)."""
+    from ..core.isochore import classify_isochore_family, segment_isochores, compute_gc3_profile
+    from ..visualization.ascii_plots import ascii_sparkline
+    records = read_fasta(fasta_file, max_records=1)
+    if not records:
+        return
+
+    seq = records[0].sequence.sequence
+    family, mean_gc = classify_isochore_family(seq)
+    segments = segment_isochores(seq, window_size=window, step_size=step)
+    gc3 = compute_gc3_profile(seq)
+
+    if HAS_RICH:
+        console.print(Panel.fit(
+            f"[bold yellow]🌐 Isochore Segmentation & Compositional Profile[/bold yellow]\n"
+            f"Overall Family: [bold magenta]{family}[/bold magenta] | Mean GC: [bold green]{mean_gc:.2f}%[/bold green] | GC3: [bold cyan]{gc3['gc3_percent']:.2f}%[/bold cyan]",
+            border_style="yellow"
+        ))
+
+        gc_vals = [s.gc_percent for s in segments]
+        if gc_vals:
+            spark = ascii_sparkline(gc_vals, max_bars=60)
+            console.print(f"GC% Sparkline: [bold cyan]{spark}[/bold cyan]\n")
+
+        tbl = Table(title="Isochore Regional Windows", header_style="bold yellow")
+        tbl.add_column("Segment Coordinates", justify="center")
+        tbl.add_column("GC%", justify="right", style="bold green")
+        tbl.add_column("Isochore Family", style="bold magenta")
+
+        for s in segments[:15]:
+            tbl.add_row(
+                f"{s.start:,} - {s.end:,}",
+                f"{s.gc_percent:.2f}%",
+                s.family
+            )
+        console.print(tbl)
+    else:
+        click.echo(f"Isochore Family: {family} (GC: {mean_gc:.2f}%, GC3: {gc3['gc3_percent']:.2f}%)")
+
+
+@cli.command("distance")
+@click.argument("fasta_file1", type=click.Path(exists=True))
+@click.argument("fasta_file2", type=click.Path(exists=True))
+@click.option("--k", default=3, help="K-mer length for frequency vector distance (default: 3)")
+def distance(fasta_file1: str, fasta_file2: str, k: int):
+    """Compute alignment-free distance and similarity metrics between two FASTA files."""
+    from ..linguistics.embeddings import (
+        cosine_similarity_dna,
+        jaccard_similarity_dna,
+        euclidean_distance_dna,
+        jensen_shannon_divergence,
+    )
+    rec1 = read_fasta(fasta_file1, max_records=1)
+    rec2 = read_fasta(fasta_file2, max_records=1)
+
+    if not rec1 or not rec2:
+        click.echo("Error: Could not read sequences from one or both files.", err=True)
+        return
+
+    seq1 = rec1[0].sequence.sequence
+    seq2 = rec2[0].sequence.sequence
+
+    cos_sim = cosine_similarity_dna(seq1, seq2, k=k)
+    jac_sim = jaccard_similarity_dna(seq1, seq2, k=k)
+    euc_dist = euclidean_distance_dna(seq1, seq2, k=k, normalized=True)
+    jsd_div = jensen_shannon_divergence(seq1, seq2, k=k)
+
+    if HAS_RICH:
+        console.print(Panel.fit(
+            f"[bold cyan]📏 Alignment-Free Sequence Distance & Similarity (k={k})[/bold cyan]\n"
+            f"Seq 1: [bold white]{rec1[0].identifier}[/bold white] ({len(seq1):,} bp) vs. Seq 2: [bold white]{rec2[0].identifier}[/bold white] ({len(seq2):,} bp)",
+            border_style="green"
+        ))
+
+        tbl = Table(title="Distance & Similarity Metrics", header_style="bold blue")
+        tbl.add_column("Metric", style="dim")
+        tbl.add_column("Score", justify="right", style="bold yellow")
+        tbl.add_column("Interpretation", style="dim")
+
+        tbl.add_row("Cosine Similarity", f"{cos_sim:.5f}", "1.0 = identical k-mer distribution")
+        tbl.add_row("Jaccard Set Similarity", f"{jac_sim:.5f}", "1.0 = identical k-mer vocabulary")
+        tbl.add_row("Normalized Euclidean Distance", f"{euc_dist:.5f}", "0.0 = identical frequency vector")
+        tbl.add_row("Jensen-Shannon Divergence", f"{jsd_div:.5f}", "0.0 = identical distribution")
+        console.print(tbl)
+    else:
+        click.echo(f"Cosine: {cos_sim:.5f} | Jaccard: {jac_sim:.5f} | Euclidean: {euc_dist:.5f} | JSD: {jsd_div:.5f}")
+
+
 @cli.command("serve")
 @click.option("--host", default="127.0.0.1", help="Host IP address (default: 127.0.0.1)")
 @click.option("--port", default=8000, help="Port number (default: 8000)")
