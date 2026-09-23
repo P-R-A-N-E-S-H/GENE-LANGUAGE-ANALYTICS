@@ -18,6 +18,11 @@ from .isochore import (
     IsochoreSegment,
 )
 from .crispr import CrisprGuideDesigner, SgRNACandidate
+from .repeats import (
+    TandemRepeat,
+    TandemRepeatScanner,
+    PATHOGENIC_REPEAT_MOTIFS,
+)
 
 __all__ = [
     "GenomicSequence",
@@ -36,4 +41,7 @@ __all__ = [
     "IsochoreSegment",
     "CrisprGuideDesigner",
     "SgRNACandidate",
+    "TandemRepeat",
+    "TandemRepeatScanner",
+    "PATHOGENIC_REPEAT_MOTIFS",
 ]

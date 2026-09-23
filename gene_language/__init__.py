@@ -16,6 +16,11 @@ from .core.codons import (
     calculate_rscu,
     CodonUsageProfile,
 )
+from .core.repeats import (
+    TandemRepeat,
+    TandemRepeatScanner,
+    PATHOGENIC_REPEAT_MOTIFS,
+)
 from .linguistics.kmer import KmerExtractor, compute_kmer_spectrum
 from .linguistics.entropy import (
     shannon_entropy,
@@ -46,6 +51,9 @@ __all__ = [
     "find_orfs",
     "calculate_rscu",
     "CodonUsageProfile",
+    "TandemRepeat",
+    "TandemRepeatScanner",
+    "PATHOGENIC_REPEAT_MOTIFS",
     "KmerExtractor",
     "compute_kmer_spectrum",
     "shannon_entropy",
