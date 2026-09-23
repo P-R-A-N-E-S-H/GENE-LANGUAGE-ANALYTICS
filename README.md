@@ -247,7 +247,26 @@ print("Top Codons:", top_codons)
 entropy_res = shannon_entropy(seq.sequence, k=1)
 print(f"Shannon Entropy: {entropy_res['entropy']} bits (Norm: {entropy_res['normalized_entropy']:.2%})")
 
-# 4. Exon vs Intron Machine Learning Classification
+# 4. Short Tandem Repeats & Microsatellite Scanning
+from gene_language.core.repeats import TandemRepeatScanner
+scanner = TandemRepeatScanner()
+repeats = scanner.scan(seq.sequence, min_copies=3)
+print(f"Found {len(repeats)} repeat tracts. Pathogenic: {len(scanner.scan_pathogenic_expansions(seq.sequence))}")
+
+# 5. Core Promoter & TFBS PWM Architecture
+from gene_language.models.promoters import PromoterArchitectureScanner
+prom_scanner = PromoterArchitectureScanner()
+elements = prom_scanner.scan(seq.sequence, min_relative_score=0.72)
+architectures = prom_scanner.identify_putative_promoter_regions(seq.sequence)
+print(f"Discovered {len(elements)} promoter elements, {len(architectures)} putative TSS sites")
+
+# 6. Alignment-Free Sequence Distances & Embeddings
+from gene_language.linguistics.embeddings import cosine_similarity_dna, GenomicEmbedding
+embedder = GenomicEmbedding(k=3, normalize="l2")
+vector = embedder.embed_sequence(seq.sequence)
+print(f"Dense 3-mer Vector: shape {vector.shape}, L2-norm: 1.0")
+
+# 7. Exon vs Intron Machine Learning Classification
 classifier = ExonIntronClassifier(model_type="xgboost")
 result = classifier.predict_single(seq.sequence)
 print(f"Prediction: {result['prediction']} ({result['confidence'] * 100:.1f}% confidence)")
@@ -259,23 +278,49 @@ print(f"Prediction: {result['prediction']} ({result['confidence'] * 100:.1f}% co
 
 | Command | Description | Example |
 |---|---|---|
-| `gene-lang analyze` | Full linguistic & entropy profiling | `gene-lang analyze sequence.fasta --k 3` |
-| `gene-lang classify` | Train and benchmark Exon/Intron model | `gene-lang classify labeled_data.fasta` |
+| `gene-lang analyze` | Full linguistic, k-mer & entropy profiling | `gene-lang analyze sequence.fasta --k 3` |
+| `gene-lang repeats` | Discover microsatellites & pathogenic STR expansions | `gene-lang repeats sequence.fasta --min-copies 3` |
+| `gene-lang promoters`| Scan core promoter elements (TATA, Inr, DPE, Sp1) | `gene-lang promoters sequence.fasta --min-score 0.72` |
+| `gene-lang isochores` | Segment genome into isochores (L1-H3) & GC3 | `gene-lang isochores sequence.fasta --window 1000` |
+| `gene-lang distance` | Compute alignment-free Cosine, Jaccard & JSD | `gene-lang distance gene1.fa gene2.fa --k 3` |
 | `gene-lang crispr` | Scan SpCas9 sgRNA guides with PAM (NGG) | `gene-lang crispr target.fasta --top 10` |
 | `gene-lang splice` | Predict 5' donor (GT) and 3' acceptor (AG) sites | `gene-lang splice sequence.fasta` |
+| `gene-lang classify` | Train and benchmark Exon/Intron ML model | `gene-lang classify labeled_data.fasta` |
 | `gene-lang orf` | Scan all 6 reading frames for ORFs | `gene-lang orf sequence.fasta --min-len 30` |
-| `gene-lang motifs` | Search for promoters & splice junctions | `gene-lang motifs sequence.fasta` |
+| `gene-lang motifs` | Search for promoters, Kozak & splice motifs | `gene-lang motifs sequence.fasta` |
 | `gene-lang clean` | Standardize FASTA and strip ambiguities | `gene-lang clean raw.fasta clean.fasta` |
-| `gene-lang serve` | Start interactive Web Studio | `gene-lang serve --port 8000` |
+| `gene-lang serve` | Start interactive Web Studio & REST API | `gene-lang serve --port 8000` |
+
+---
+
+## 🔌 REST API Endpoints
+
+FastAPI server exposes high-performance asynchronous JSON endpoints:
+
+- `POST /api/analyze`: Full compositional, k-mer, entropy, and Markov profile.
+- `POST /api/repeats`: Microsatellite STR scan and disease expansion detection.
+- `POST /api/promoters`: Core promoter PWM element scan and TSS architecture prediction.
+- `POST /api/isochore`: Regional isochore segmentation and GC3 profile.
+- `POST /api/distance`: Pairwise alignment-free similarity metrics.
+- `POST /api/crispr`: SpCas9 sgRNA guide scanner.
+- `POST /api/splice`: 5' donor and 3' acceptor splice junction scorer.
+- `POST /api/classify`: Real-time Exon vs. Intron prediction.
+- `POST /api/orfs`: 6-frame peptide translation and ORF finder.
+- `POST /api/motifs`: Biological consensus motif identification.
+- `POST /api/clean`: Multiline FASTA sanitization and formatting.
 
 ---
 
 ## 🧪 Automated Test Suite
 
-Run the comprehensive test suite:
+Run the comprehensive 39-test suite with coverage:
 
 ```bash
 pytest tests/ -v --cov=gene_language
+```
+
+```plaintext
+============================= 39 passed in 6.29s ==============================
 ```
 
 ---
@@ -287,23 +332,34 @@ GENE-LANGUAGE-ANALYTICS/
 │
 ├── gene_language/                    # Core Python Package
 │   ├── __init__.py
-│   ├── core/                         # Sequence, FASTA, and Codon translation
+│   ├── core/                         # Sequence, Repeats, Isochores, CRISPR, FASTA, Codons
 │   │   ├── sequence.py
-│   │   ├── fasta.py
-│   │   └── codons.py
-│   ├── linguistics/                  # k-mers, Entropy, Markov models, Vectorizer
-│   │   ├── kmer.py
-│   │   ├── entropy.py
-│   │   ├── markov.py
-│   │   └── vectorizer.py
-│   ├── models/                       # ML Classifier, Evaluator, and Motif Scanner
-│   │   ├── classifier.py
-│   │   ├── evaluator.py
-│   │   └── motifs.py
+│   │   ├── repeats.py               # Microsatellite & Pathogenic STR Engine
+│   │   ├── isochore.py              # Isochore & GC3 Profiling
+│   │   ├── crispr.py                # SpCas9 Guide Designer
+│   │   ├── fasta.py                 # Streaming FASTA Parser & Sanitizer
+│   │   └── codons.py                # Genetic Code & 6-Frame Translation
+│   ├── linguistics/                  # k-mers, Embeddings, Entropy, Markov models
+│   │   ├── kmer.py                  # Multi-Scale k-mer Spectra
+│   │   ├── embeddings.py            # DNA Vector & TF-IDF Embeddings
+│   │   ├── entropy.py               # Shannon & Renyi Entropy, Trifonov LC
+│   │   ├── markov.py                # Markov DNA Syntax Matrix
+│   │   ├── subword.py               # Genomic BPE Tokenizer
+│   │   ├── correlation.py           # Mutual Information Lag
+│   │   └── vectorizer.py            # Multi-Kmer Feature Vectorizer
+│   ├── models/                       # ML Classifier, Evaluator, Promoters, Splice
+│   │   ├── classifier.py            # XGBoost Exon/Intron Model
+│   │   ├── promoters.py             # Core Promoter PWM & TSS Architecture Scorer
+│   │   ├── splice_junction.py       # Splice Donor & Acceptor PWM Scorer
+│   │   ├── evaluator.py             # Stratified 5-Fold Evaluator
+│   │   └── motifs.py                # IUPAC Motif Scanner
+│   ├── visualization/                # Sparklines, ASCII & Matplotlib Plots
+│   │   ├── ascii_plots.py           # Terminal Sparklines & Barplots
+│   │   └── plots.py                 # Publication-Grade Matplotlib Figures
 │   └── cli/                          # Rich Command-Line Interface
 │       └── main.py
 │
-├── web/                              # Interactive Web Studio (GitHub Pages Ready)
+├── web/                              # Interactive Web Studio (Glassmorphic UI)
 │   ├── index.html
 │   ├── style.css
 │   ├── app.js
@@ -317,15 +373,28 @@ GENE-LANGUAGE-ANALYTICS/
 │   ├── sample_exons_introns.fasta
 │   └── sample_promoters.fasta
 │
-├── examples/                         # Runnable Demonstration Workflows
+├── examples/                         # 8 Runnable Demonstration Workflows
 │   ├── 01_analyze_sequence.py
 │   ├── 02_train_and_evaluate_classifier.py
-│   └── 03_motif_and_entropy_scan.py
+│   ├── 03_motif_and_entropy_scan.py
+│   ├── 04_crispr_guide_designer.py
+│   ├── 05_isochore_segmentation.py
+│   ├── 06_microsatellite_and_tandem_repeats.py
+│   ├── 07_promoter_and_tfbs_scoring.py
+│   └── 08_genomic_embeddings_and_distances.py
 │
-├── tests/                            # Pytest Test Suite (100% Pass Rate)
+├── tests/                            # Pytest Test Suite (39 Tests / 100% Pass)
 │   ├── test_sequence.py
 │   ├── test_kmer.py
+│   ├── test_embeddings.py
+│   ├── test_repeats.py
+│   ├── test_promoters.py
 │   ├── test_entropy.py
+│   ├── test_isochore.py
+│   ├── test_crispr.py
+│   ├── test_splice.py
+│   ├── test_subword.py
+│   ├── test_viz.py
 │   ├── test_codons.py
 │   ├── test_classifier.py
 │   ├── test_motifs.py
