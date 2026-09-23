@@ -39,6 +39,7 @@ from .linguistics.embeddings import (
 )
 from .models.classifier import ExonIntronClassifier
 from .models.motifs import MotifScanner, COMMON_MOTIFS
+from .models.promoters import PositionWeightMatrix, PromoterArchitectureScanner
 
 __all__ = [
     "GenomicSequence",
@@ -70,4 +71,6 @@ __all__ = [
     "ExonIntronClassifier",
     "MotifScanner",
     "COMMON_MOTIFS",
+    "PositionWeightMatrix",
+    "PromoterArchitectureScanner",
 ]
