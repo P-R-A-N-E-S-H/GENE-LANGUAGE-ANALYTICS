@@ -17,11 +17,22 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from gene_language.core.sequence import GenomicSequence
 from gene_language.core.fasta import parse_fasta_string
 from gene_language.core.codons import find_orfs, calculate_rscu, translate_sequence, GENETIC_CODE, AMINO_ACID_NAMES
+from gene_language.core.crispr import CrisprGuideDesigner
+from gene_language.core.isochore import classify_isochore_family, segment_isochores, compute_gc3_profile
+from gene_language.core.repeats import TandemRepeatScanner
 from gene_language.linguistics.kmer import KmerExtractor, compute_kmer_spectrum
 from gene_language.linguistics.entropy import shannon_entropy, linguistic_complexity, zipf_power_law_fit
 from gene_language.linguistics.markov import MarkovModelDNA
+from gene_language.linguistics.embeddings import (
+    cosine_similarity_dna,
+    jaccard_similarity_dna,
+    euclidean_distance_dna,
+    jensen_shannon_divergence,
+)
 from gene_language.models.classifier import ExonIntronClassifier
 from gene_language.models.motifs import MotifScanner, COMMON_MOTIFS
+from gene_language.models.splice_junction import SpliceJunctionScorer
+from gene_language.models.promoters import PromoterArchitectureScanner
 
 app = FastAPI(
     title="GENE-LANGUAGE-ANALYTICS API",
@@ -87,6 +98,39 @@ class MotifRequest(BaseModel):
 class OrfRequest(BaseModel):
     sequence: str
     min_length_aa: int = 25
+
+
+class CrisprRequest(BaseModel):
+    sequence: str = Field(..., description="Target DNA sequence or FASTA")
+    top: int = Field(15, description="Number of top sgRNA candidates to return")
+
+
+class SpliceRequest(BaseModel):
+    sequence: str = Field(..., description="Target DNA sequence or FASTA")
+    min_score: float = Field(0.0, description="Minimum log-odds score threshold in bits")
+
+
+class IsochoreRequest(BaseModel):
+    sequence: str = Field(..., description="Target DNA sequence or FASTA")
+    window_size: int = Field(1000, description="Window size in bp")
+    step_size: int = Field(200, description="Step size in bp")
+
+
+class RepeatRequest(BaseModel):
+    sequence: str = Field(..., description="Target DNA sequence or FASTA")
+    min_copies: int = Field(3, description="Minimum repeat copy count")
+    min_total_len: int = Field(6, description="Minimum total repeat length in bp")
+
+
+class PromoterRequest(BaseModel):
+    sequence: str = Field(..., description="Target DNA sequence or FASTA")
+    min_score: float = Field(0.70, description="Minimum relative PWM score [0.0 - 1.0]")
+
+
+class DistanceRequest(BaseModel):
+    sequence_a: str = Field(..., description="First DNA sequence or FASTA")
+    sequence_b: str = Field(..., description="Second DNA sequence or FASTA")
+    k: int = Field(3, description="K-mer length for frequency extraction (default: 3)")
 
 
 @app.get("/api/health")
@@ -302,6 +346,120 @@ async def clean_seq(req: CleanRequest):
         "length": len(seq_str),
         "gc_content": rec.sequence.gc_content,
         "fasta_text": fasta_formatted
+    }
+
+
+@app.post("/api/crispr")
+async def scan_crispr(req: CrisprRequest):
+    """Discovers CRISPR-Cas9 sgRNA guide RNAs (20nt + NGG PAM) with efficiency scoring."""
+    records = parse_fasta_string(req.sequence)
+    if not records:
+        raise HTTPException(status_code=400, detail="Invalid sequence.")
+
+    designer = CrisprGuideDesigner()
+    guides = designer.find_guides(records[0].sequence.sequence)
+    return [g.to_dict() for g in guides[:req.top]]
+
+
+@app.post("/api/splice")
+async def scan_splice(req: SpliceRequest):
+    """Scans for 5' splice donor (GT) and 3' splice acceptor (AG) sites with PWM scoring."""
+    records = parse_fasta_string(req.sequence)
+    if not records:
+        raise HTTPException(status_code=400, detail="Invalid sequence.")
+
+    scorer = SpliceJunctionScorer(min_score_threshold=req.min_score)
+    junctions = scorer.scan_all(records[0].sequence.sequence)
+    return [j.to_dict() for j in junctions]
+
+
+@app.post("/api/isochore")
+async def scan_isochores(req: IsochoreRequest):
+    """Calculates isochore family segmentation (L1, L2, H1, H2, H3) and GC3 profile."""
+    records = parse_fasta_string(req.sequence)
+    if not records:
+        raise HTTPException(status_code=400, detail="Invalid sequence.")
+
+    seq_str = records[0].sequence.sequence
+    family, mean_gc = classify_isochore_family(seq_str)
+    segments = segment_isochores(seq_str, window_size=req.window_size, step_size=req.step_size)
+    gc3_info = compute_gc3_profile(seq_str)
+
+    return {
+        "overall_family": family,
+        "overall_gc_percent": mean_gc,
+        "gc3_percent": gc3_info["gc3_percent"],
+        "segments_count": len(segments),
+        "segments": [s.to_dict() for s in segments[:100]]
+    }
+
+
+@app.post("/api/repeats")
+async def scan_repeats(req: RepeatRequest):
+    """Discovers Short Tandem Repeats (microsatellites) and disease expansion candidates."""
+    records = parse_fasta_string(req.sequence)
+    if not records:
+        raise HTTPException(status_code=400, detail="Invalid sequence.")
+
+    seq_str = records[0].sequence.sequence
+    scanner = TandemRepeatScanner()
+    repeats = scanner.scan(seq_str, min_copies=req.min_copies, min_total_len=req.min_total_len)
+    disease_repeats = scanner.scan_pathogenic_expansions(seq_str)
+    telomeres = scanner.telomeric_profile(seq_str)
+
+    return {
+        "total_repeats_found": len(repeats),
+        "pathogenic_expansions_found": len(disease_repeats),
+        "telomeric_profile": telomeres,
+        "repeats": [r.to_dict() for r in repeats[:60]],
+        "pathogenic_candidates": [r.to_dict() for r in disease_repeats]
+    }
+
+
+@app.post("/api/promoters")
+async def scan_promoters(req: PromoterRequest):
+    """Scans for core promoter elements (TATA, Inr, DPE, BRE, Sp1) and predicts TSS architectures."""
+    records = parse_fasta_string(req.sequence)
+    if not records:
+        raise HTTPException(status_code=400, detail="Invalid sequence.")
+
+    seq_str = records[0].sequence.sequence
+    scanner = PromoterArchitectureScanner()
+    elements = scanner.scan(seq_str, min_relative_score=req.min_score)
+    promoters = scanner.identify_putative_promoter_regions(seq_str)
+
+    return {
+        "total_elements_found": len(elements),
+        "predicted_promoter_architectures": promoters,
+        "elements": [e.to_dict() for e in elements[:60]]
+    }
+
+
+@app.post("/api/distance")
+async def calculate_distance(req: DistanceRequest):
+    """Calculates alignment-free sequence distance and similarity metrics between two DNA sequences."""
+    rec_a = parse_fasta_string(req.sequence_a)
+    rec_b = parse_fasta_string(req.sequence_b)
+    if not rec_a or not rec_b:
+        raise HTTPException(status_code=400, detail="Both sequences must be valid non-empty DNA.")
+
+    seq_a = rec_a[0].sequence.sequence
+    seq_b = rec_b[0].sequence.sequence
+    k = max(1, min(6, req.k))
+
+    cos_sim = cosine_similarity_dna(seq_a, seq_b, k=k)
+    jac_sim = jaccard_similarity_dna(seq_a, seq_b, k=k)
+    euc_dist = euclidean_distance_dna(seq_a, seq_b, k=k, normalized=True)
+    jsd_div = jensen_shannon_divergence(seq_a, seq_b, k=k)
+
+    return {
+        "k": k,
+        "cosine_similarity": round(cos_sim, 5),
+        "jaccard_similarity": round(jac_sim, 5),
+        "euclidean_distance_normalized": round(euc_dist, 5),
+        "jensen_shannon_divergence": round(jsd_div, 5),
+        "seq_a_length": len(seq_a),
+        "seq_b_length": len(seq_b),
     }
 
 
