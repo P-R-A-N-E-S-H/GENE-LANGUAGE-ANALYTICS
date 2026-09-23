@@ -12,7 +12,15 @@ from .entropy import (
 from .markov import MarkovModelDNA
 from .vectorizer import GenomicVectorizer
 from .subword import GenomicBpeTokenizer
-from .correlation import mutual_information_lag, jensen_shannon_divergence
+from .correlation import mutual_information_lag
+from .embeddings import (
+    GenomicEmbedding,
+    TfidfGenomicEmbedding,
+    cosine_similarity_dna,
+    jaccard_similarity_dna,
+    euclidean_distance_dna,
+    jensen_shannon_divergence,
+)
 
 __all__ = [
     "KmerExtractor",
@@ -25,5 +33,10 @@ __all__ = [
     "GenomicVectorizer",
     "GenomicBpeTokenizer",
     "mutual_information_lag",
+    "GenomicEmbedding",
+    "TfidfGenomicEmbedding",
+    "cosine_similarity_dna",
+    "jaccard_similarity_dna",
+    "euclidean_distance_dna",
     "jensen_shannon_divergence",
 ]

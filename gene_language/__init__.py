@@ -25,6 +25,13 @@ from .linguistics.entropy import (
 )
 from .linguistics.markov import MarkovModelDNA
 from .linguistics.vectorizer import GenomicVectorizer
+from .linguistics.embeddings import (
+    GenomicEmbedding,
+    TfidfGenomicEmbedding,
+    cosine_similarity_dna,
+    jaccard_similarity_dna,
+    euclidean_distance_dna,
+)
 from .models.classifier import ExonIntronClassifier
 from .models.motifs import MotifScanner, COMMON_MOTIFS
 
@@ -47,6 +54,11 @@ __all__ = [
     "zipf_power_law_fit",
     "MarkovModelDNA",
     "GenomicVectorizer",
+    "GenomicEmbedding",
+    "TfidfGenomicEmbedding",
+    "cosine_similarity_dna",
+    "jaccard_similarity_dna",
+    "euclidean_distance_dna",
     "ExonIntronClassifier",
     "MotifScanner",
     "COMMON_MOTIFS",
