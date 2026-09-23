@@ -92,6 +92,8 @@
           <button class="tab-btn" data-tab="tab-kmers">🔤 k-mer Linguistics</button>
           <button class="tab-btn" data-tab="tab-orfs">🧬 6-Frame ORFs</button>
           <button class="tab-btn" data-tab="tab-motifs">🎯 Motifs</button>
+          <button class="tab-btn" data-tab="tab-repeats">🔬 STR &amp; Repeats</button>
+          <button class="tab-btn" data-tab="tab-promoters">🏛️ Core Promoters</button>
           <button class="tab-btn" data-tab="tab-crispr">✂️ CRISPR sgRNAs</button>
           <button class="tab-btn" data-tab="tab-splice">🔗 Splice Junctions</button>
           <button class="tab-btn" data-tab="tab-syntax">🔀 DNA Syntax &amp; Markov</button>
@@ -219,6 +221,63 @@
                   </tr>
                 </thead>
                 <tbody id="motifsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: SHORT TANDEM REPEATS (STR) & MICROSATELLITES -->
+        <div id="tab-repeats" class="tab-content">
+          <div class="card-section">
+            <div class="card-title">
+              <span>🔬 Microsatellites &amp; Short Tandem Repeats (STRs)</span>
+              <span class="badge" id="repeatsSummaryBadge">0 Found</span>
+            </div>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">
+              Identifies mono-, di-, tri-, and tetranucleotide simple sequence repeats (SSRs), telomeric motifs, and pathogenic repeat expansion risks.
+            </p>
+            <div style="overflow-x:auto;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Repeat Unit</th>
+                    <th>Length</th>
+                    <th>Copies</th>
+                    <th>Coordinates</th>
+                    <th>Total (bp)</th>
+                    <th>Tract Sequence</th>
+                    <th>Pathogenic Association</th>
+                  </tr>
+                </thead>
+                <tbody id="repeatsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: CORE PROMOTERS & TSS -->
+        <div id="tab-promoters" class="tab-content">
+          <div class="card-section">
+            <div class="card-title">
+              <span>🏛️ Core Promoter Elements &amp; Predicted TSS Architectures</span>
+              <span class="badge" id="promotersSummaryBadge">0 Elements</span>
+            </div>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">
+              Position Weight Matrix (PWM) scoring for canonical core elements: TATA-box, Initiator (Inr), DPE, BRE, CCAAT-box, and Sp1/GC boxes.
+            </p>
+            <div style="overflow-x:auto;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Promoter Element</th>
+                    <th>Coordinates</th>
+                    <th>Sequence</th>
+                    <th>PWM Score (bits)</th>
+                    <th>Affinity</th>
+                    <th>Functional Description</th>
+                  </tr>
+                </thead>
+                <tbody id="promotersTableBody"></tbody>
               </table>
             </div>
           </div>

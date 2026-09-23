@@ -375,6 +375,12 @@ function updateUI(data) {
   // Render Motifs Table
   renderMotifsTable(data.motifs);
 
+  // Render Repeats & STRs Table
+  renderRepeatsTable(data.seq);
+
+  // Render Promoters & TSS Table
+  renderPromotersTable(data.seq);
+
   // Render CRISPR Table
   renderCrisprTable(data.seq);
 
@@ -406,6 +412,127 @@ function renderMotifsTable(motifs) {
       <td>${m.start} - ${m.end}</td>
       <td style="color:var(--accent-emerald);">${m.seq}</td>
       <td style="font-size:0.75rem;color:var(--text-muted);">${m.desc}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function renderRepeatsTable(seq) {
+  const tbody = document.getElementById("repeatsTableBody");
+  const badge = document.getElementById("repeatsSummaryBadge");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const pathogenicMap = {
+    "CAG": "Huntington's Disease / SCA PolyQ",
+    "CTG": "Myotonic Dystrophy Type 1 (DM1)",
+    "CGG": "Fragile X Syndrome (FXS)",
+    "GAA": "Friedreich's Ataxia (FRDA)",
+    "CCTG": "Myotonic Dystrophy Type 2 (DM2)",
+    "GGGGCC": "C9orf72 ALS / Frontotemporal Dementia",
+    "TTAGGG": "Canonical Vertebrate Telomere",
+    "CCCTAA": "Reverse Telomere Tract"
+  };
+
+  const repeats = [];
+  for (let ulen = 1; ulen <= 6; ulen++) {
+    const reg = new RegExp(`(([ACGT]{${ulen}})\\2{2,})`, "gi");
+    let match;
+    while ((match = reg.exec(seq)) !== null) {
+      const full = match[1];
+      const unit = match[2].toUpperCase();
+      if (full.length >= 6) {
+        const copies = (full.length / unit.length).toFixed(1);
+        const dis = pathogenicMap[unit] || null;
+        repeats.push({
+          unit,
+          unitLen: unit.length,
+          copies,
+          start: match.index,
+          end: match.index + full.length,
+          totalLen: full.length,
+          seq: full,
+          disease: dis
+        });
+      }
+    }
+  }
+
+  if (badge) badge.innerText = `${repeats.length} Found`;
+
+  if (repeats.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-dim);">No tandem repeats (>= 3 copies) detected in sequence.</td></tr>`;
+    return;
+  }
+
+  repeats.sort((a, b) => b.totalLen - a.totalLen);
+  for (let r of repeats.slice(0, 20)) {
+    const tr = document.createElement("tr");
+    const disBadge = r.disease
+      ? `<span class="badge pulse" style="color:var(--accent-rose);background:rgba(244,63,94,0.15);font-weight:700;">⚠️ ${r.disease}</span>`
+      : `<span style="color:var(--text-dim);">Normal SSR</span>`;
+
+    tr.innerHTML = `
+      <td style="color:var(--accent-amber);font-weight:700;font-family:var(--font-mono);">${r.unit}</td>
+      <td>${r.unitLen} bp</td>
+      <td style="color:var(--accent-emerald);font-weight:600;">${r.copies}x</td>
+      <td>${r.start} - ${r.end}</td>
+      <td>${r.totalLen} bp</td>
+      <td style="font-family:var(--font-mono);color:var(--accent-cyan);font-size:0.75rem;">${r.seq.length > 25 ? r.seq.substr(0, 25) + '...' : r.seq}</td>
+      <td>${disBadge}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function renderPromotersTable(seq) {
+  const tbody = document.getElementById("promotersTableBody");
+  const badge = document.getElementById("promotersSummaryBadge");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const promoterDefinitions = [
+    { name: "TATA Box", regex: /TATA[AT]A[AT][AG]/gi, desc: "TBP binding core element situated ~25-30bp upstream of TSS", bits: 11.2 },
+    { name: "Initiator (Inr)", regex: /[CT][CT]A[ACGT][AT][CT][CT]/gi, desc: "Overlaps TSS (+1 anchor) directing RNA Pol II pre-initiation complex", bits: 6.8 },
+    { name: "Downstream Promoter (DPE)", regex: /[AG]G[AT][CT][ACG]/gi, desc: "Situated +28 to +32bp downstream of TSS in TATA-less promoters", bits: 4.6 },
+    { name: "TFIIB Element (BREu)", regex: /[GC][GC][AG]CGCC/gi, desc: "Located upstream of TATA box enhancing TFIIB assembly", bits: 5.4 },
+    { name: "CCAAT Box", regex: /CCAAT/gi, desc: "NF-Y / CBF transcription activator binding motif", bits: 5.0 },
+    { name: "GC Box (Sp1)", regex: /GGGCGG/gi, desc: "Sp1 zinc-finger binding site enriched in CpG housekeeping promoters", bits: 10.6 },
+    { name: "E-Box Motif", regex: /CA[ACGT]{2}TG|CACGTG/gi, desc: "bHLH transcription factor motif (c-Myc / Max / USF)", bits: 6.2 },
+  ];
+
+  const elements = [];
+  for (let def of promoterDefinitions) {
+    let match;
+    while ((match = def.regex.exec(seq)) !== null) {
+      elements.push({
+        name: def.name,
+        start: match.index,
+        end: match.index + match[0].length,
+        seq: match[0],
+        bits: def.bits,
+        desc: def.desc
+      });
+    }
+  }
+
+  if (badge) badge.innerText = `${elements.length} Elements`;
+
+  if (elements.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-dim);">No core promoter elements identified.</td></tr>`;
+    return;
+  }
+
+  elements.sort((a, b) => a.start - b.start);
+  for (let el of elements.slice(0, 25)) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="color:var(--accent-cyan);font-weight:700;">${el.name}</td>
+      <td>${el.start} - ${el.end}</td>
+      <td style="color:var(--accent-yellow);font-family:var(--font-mono);">${el.seq}</td>
+      <td style="color:var(--accent-emerald);font-weight:600;">${el.bits}</td>
+      <td><span class="badge">High</span></td>
+      <td style="font-size:0.75rem;color:var(--text-muted);">${el.desc}</td>
     `;
     tbody.appendChild(tr);
   }
